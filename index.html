@@ -1,0 +1,2302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Derailleur Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    color-scheme: light dark;
+    --ground: #edf1ec;
+    --panel: #ffffff;
+    --panel-2: #dfe6dc;
+    --line: #c3cdc0;
+    --ink: #17201a;
+    --mist: #55645a;
+    --amber: #9a5e1d;
+    --amber-soft: #9a5e1d1a;
+    --cyan: #146e7c;
+    --cyan-soft: #146e7c1a;
+    --danger: #ab3327;
+    --danger-soft: #ab33271a;
+    --ok: #227a4e;
+    --focus: #146e7c;
+    --on-cyan: #f4fbfb;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0f1512;
+      --panel: #161e19;
+      --panel-2: #1e2a22;
+      --line: #2b3a30;
+      --ink: #e6ede8;
+      --mist: #8fa196;
+      --amber: #e2a04d;
+      --amber-soft: #e2a04d26;
+      --cyan: #4fd1e3;
+      --cyan-soft: #4fd1e326;
+      --danger: #ef6a5a;
+      --danger-soft: #ef6a5a26;
+      --ok: #4ddb96;
+      --focus: #4fd1e3;
+      --on-cyan: #06181a;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0f1512;
+    --panel: #161e19;
+    --panel-2: #1e2a22;
+    --line: #2b3a30;
+    --ink: #e6ede8;
+    --mist: #8fa196;
+    --amber: #e2a04d;
+    --amber-soft: #e2a04d26;
+    --cyan: #4fd1e3;
+    --cyan-soft: #4fd1e326;
+    --danger: #ef6a5a;
+    --danger-soft: #ef6a5a26;
+    --ok: #4ddb96;
+    --focus: #4fd1e3;
+    --on-cyan: #06181a;
+  }
+
+  * { box-sizing: border-box; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  html, body { margin: 0; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    padding: clamp(20px, 4vw, 48px) 16px 64px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .console {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .masthead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .masthead h1 {
+    font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+    font-weight: 700;
+    font-size: clamp(1.5rem, 1rem + 2vw, 2.1rem);
+    letter-spacing: 0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .masthead .sub {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    color: var(--mist);
+  }
+
+  .panel-block {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+
+  .label {
+    font-family: "IBM Plex Sans Condensed", sans-serif;
+    font-weight: 600;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--mist);
+  }
+
+  /* --- connection bar --- */
+  .connect-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .status-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--line);
+    flex: none;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 12%, transparent);
+  }
+
+  .status-dot[data-state="connecting"] {
+    background: var(--amber);
+    animation: pulse 1.1s ease-in-out infinite;
+  }
+
+  .status-dot[data-state="connected"] { background: var(--ok); }
+  .status-dot[data-state="error"] { background: var(--danger); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  .status-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .status-text .name {
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .status-text .detail {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.74rem;
+    color: var(--mist);
+    overflow-wrap: anywhere;
+  }
+
+  .spacer { flex: 1; }
+
+  button {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 0.88rem;
+    border-radius: 7px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--ink);
+    padding: 9px 16px;
+    cursor: pointer;
+    transition: filter 0.12s ease, transform 0.05s ease;
+  }
+
+  button:hover:not(:disabled) { filter: brightness(1.06); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  button:focus-visible,
+  input:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .btn-connect {
+    background: var(--cyan);
+    border-color: var(--cyan);
+    color: var(--on-cyan);
+  }
+
+  .btn-disconnect {
+    background: transparent;
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+
+  .support-note {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    color: var(--mist);
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+
+  .unsupported {
+    border-color: var(--danger);
+    background: var(--danger-soft);
+  }
+
+  .unsupported .label { color: var(--danger); }
+
+  /* --- drive grid --- */
+  .drive-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  @media (max-width: 620px) {
+    .drive-grid { grid-template-columns: 1fr; }
+  }
+
+  .drive-panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .drive-panel[data-dir="fwd"] { border-top: 3px solid var(--amber); }
+  .drive-panel[data-dir="rev"] { border-top: 3px solid var(--cyan); }
+
+  .drive-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .drive-head .dir-label {
+    font-family: "IBM Plex Sans Condensed", sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.02em;
+  }
+
+  .drive-panel[data-dir="fwd"] .dir-label { color: var(--amber); }
+  .drive-panel[data-dir="rev"] .dir-label { color: var(--cyan); }
+
+  .duty-readout {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 1.4rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+
+  .meter {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--panel-2);
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+
+  .meter > span {
+    display: block;
+    height: 100%;
+    width: 0%;
+    transition: width 0.08s linear;
+  }
+
+  .drive-panel[data-dir="fwd"] .meter > span { background: var(--amber); }
+  .drive-panel[data-dir="rev"] .meter > span { background: var(--cyan); }
+
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--ink);
+    cursor: pointer;
+  }
+
+  .drive-panel[data-dir="fwd"] input[type="range"] { accent-color: var(--amber); }
+  .drive-panel[data-dir="rev"] input[type="range"] { accent-color: var(--cyan); }
+
+  .drive-btn {
+    padding: 11px 16px;
+    font-size: 0.92rem;
+  }
+
+  .drive-panel[data-dir="fwd"] .drive-btn {
+    background: var(--amber-soft);
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+
+  .drive-panel[data-dir="rev"] .drive-btn {
+    background: var(--cyan-soft);
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+
+  /* --- secondary controls --- */
+  .secondary-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .btn-stop { min-width: 96px; }
+
+  .btn-brake {
+    background: var(--danger-soft);
+    border-color: var(--danger);
+    color: var(--danger);
+    min-width: 96px;
+  }
+
+  .btn-zero {
+    background: var(--amber-soft);
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+
+  .auto-poll {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.84rem;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .auto-poll input { accent-color: var(--cyan); width: 16px; height: 16px; }
+  .auto-poll input:disabled + span { opacity: 0.45; }
+
+  .manual-form {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+    min-width: 220px;
+  }
+
+  .manual-form input[type="text"] {
+    flex: 1;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.85rem;
+    padding: 9px 12px;
+    border-radius: 7px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--ink);
+    min-width: 0;
+  }
+
+  .manual-form input[type="text"]::placeholder { color: var(--mist); }
+
+  /* --- gear position row --- */
+  .gear-row {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  @media (max-width: 620px) {
+    .gear-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+
+  .gear-btn {
+    min-width: 0;
+    padding: 7px 0;
+    text-align: center;
+    background: var(--cyan-soft);
+    border-color: var(--cyan);
+    color: var(--cyan);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
+  }
+
+  .gear-btn .gear-deg {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    opacity: 0.75;
+  }
+
+  /* The gear the encoder currently reads (rep in gear=cmd/rep). */
+  .gear-btn.current {
+    background: var(--cyan);
+    color: var(--on-cyan);
+  }
+
+  /* --- gear angle editor --- */
+  .angle-grid {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  @media (max-width: 620px) {
+    .angle-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+
+  .angle-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .angle-cell span {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    color: var(--mist);
+  }
+
+  .angle-cell input {
+    width: 100%;
+    min-width: 0;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.85rem;
+    padding: 6px;
+    border-radius: 7px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--ink);
+  }
+
+  .angle-cell input:disabled { opacity: 0.5; }
+  .angle-cell.changed input { border-color: var(--amber); background: var(--amber-soft); }
+  .angle-cell.changed span { color: var(--amber); }
+  .angle-cell.bad input { border-color: var(--danger); background: var(--danger-soft); }
+  .angle-cell.bad span { color: var(--danger); }
+
+  .angle-src { font-family: "IBM Plex Mono", monospace; font-size: 0.74rem; color: var(--mist); }
+
+  /* --- status readout --- */
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 12px;
+    margin-top: 10px;
+  }
+
+  .status-cell {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+
+  .status-cell .k {
+    font-family: "IBM Plex Sans Condensed", sans-serif;
+    font-weight: 600;
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mist);
+    display: block;
+  }
+
+  .status-cell .v {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .status-cell .v[data-fault="1"] { color: var(--danger); }
+  .status-cell.stale .v { color: var(--mist); }
+
+  /* --- terminal log --- */
+  .terminal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+
+  .terminal {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    height: 220px;
+    overflow-y: auto;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.8rem;
+    line-height: 1.65;
+  }
+
+  .terminal .line { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .terminal .ts { color: var(--mist); }
+  .terminal .tag-tx { color: var(--cyan); font-weight: 600; }
+  .terminal .tag-rx { color: var(--amber); font-weight: 600; }
+  .terminal .tag-sys { color: var(--mist); font-style: italic; }
+
+  .terminal:empty::before {
+    content: "waiting for traffic…";
+    color: var(--mist);
+  }
+
+  .btn-clear { font-size: 0.76rem; padding: 5px 10px; }
+
+  .protocol-note {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.74rem;
+    color: var(--mist);
+  }
+
+  .protocol-note b { color: var(--ink); font-weight: 600; }
+
+  .terminal .tag-smp { color: var(--ok); font-weight: 600; }
+
+  /* --- page tabs --- */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .tab {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 10px 14px;
+    color: var(--mist);
+    margin-bottom: -1px;
+  }
+
+  .tab[aria-selected="true"] {
+    color: var(--ink);
+    border-bottom-color: var(--cyan);
+  }
+
+  .page {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .page[hidden] { display: none; }
+
+  /* --- firmware page --- */
+  .btn-primary {
+    background: var(--cyan);
+    border-color: var(--cyan);
+    color: var(--on-cyan);
+  }
+
+  .head-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .table-wrap { overflow-x: auto; margin-top: 10px; }
+
+  .guide-link {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--cyan);
+    text-decoration: none;
+  }
+
+  .guide-link:hover { text-decoration: underline; }
+
+  .slot-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .slot-table th {
+    font-family: "IBM Plex Sans Condensed", sans-serif;
+    font-weight: 600;
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mist);
+    text-align: left;
+    padding: 4px 10px 6px 0;
+  }
+
+  .slot-table td {
+    border-top: 1px solid var(--line);
+    padding: 7px 10px 7px 0;
+    vertical-align: top;
+    white-space: nowrap;
+  }
+
+  .slot-table td.empty { color: var(--mist); white-space: normal; }
+
+  .chip {
+    display: inline-block;
+    padding: 0 6px;
+    margin: 0 4px 2px 0;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    font-size: 0.72rem;
+  }
+
+  .chip.ok { color: var(--ok); border-color: var(--ok); }
+  .chip.warn { color: var(--amber); border-color: var(--amber); }
+  .chip.bad { color: var(--danger); border-color: var(--danger); }
+
+  .file-row { margin-top: 10px; }
+
+  input[type="file"] {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.8rem;
+    color: var(--ink);
+    max-width: 100%;
+  }
+
+  input[type="file"]::file-selector-button {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    border-radius: 7px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--ink);
+    padding: 7px 14px;
+    margin-right: 10px;
+    cursor: pointer;
+  }
+
+  #fwInfo .v { font-size: 0.86rem; overflow-wrap: anywhere; }
+
+  select {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.8rem;
+    padding: 6px 8px;
+    border-radius: 7px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--ink);
+  }
+
+  .steps {
+    list-style: none;
+    padding: 0;
+    margin: 14px 0 0;
+    display: grid;
+    gap: 4px;
+    font-size: 0.86rem;
+    color: var(--mist);
+  }
+
+  .steps li::before {
+    content: "○";
+    display: inline-block;
+    width: 1.4em;
+    font-family: "IBM Plex Mono", monospace;
+  }
+
+  .steps li[data-state="active"] { color: var(--ink); }
+  .steps li[data-state="active"]::before { content: "●"; color: var(--amber); animation: pulse 1.1s ease-in-out infinite; }
+  .steps li[data-state="done"] { color: var(--ink); }
+  .steps li[data-state="done"]::before { content: "✓"; color: var(--ok); }
+  .steps li[data-state="fail"] { color: var(--danger); }
+  .steps li[data-state="fail"]::before { content: "✕"; }
+  .steps li[data-state="skip"]::before { content: "–"; }
+
+  .steps .step-note {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.74rem;
+    color: var(--mist);
+    margin-left: 6px;
+  }
+
+  .fw-meter { margin-top: 14px; }
+  .fw-meter > span { background: var(--cyan); }
+
+  .fw-msg {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.8rem;
+    margin-top: 10px;
+    overflow-wrap: anywhere;
+  }
+
+  .fw-msg:empty { display: none; }
+  .fw-msg[data-kind="error"] { color: var(--danger); }
+  .fw-msg[data-kind="ok"] { color: var(--ok); }
+</style>
+</head>
+<body>
+
+<div class="console">
+  <div class="masthead">
+    <h1>Derailleur Console</h1>
+    <div class="sub">DRV8874 &middot; Nordic UART Service &middot; MCUmgr SMP</div>
+  </div>
+
+  <div class="panel-block" id="connectPanel">
+    <div class="connect-row">
+      <span class="status-dot" id="statusDot" data-state="disconnected"></span>
+      <div class="status-text">
+        <span class="name" id="statusName">Not connected</span>
+        <span class="detail" id="statusDetail">Looking for &ldquo;DTS-CS01_&hellip;&rdquo;</span>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn-connect" id="connectBtn" type="button">Connect</button>
+      <button class="btn-disconnect" id="disconnectBtn" type="button" hidden>Disconnect</button>
+    </div>
+    <div class="support-note" id="supportNote"></div>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" id="tab-control" data-page="control" role="tab" aria-controls="page-control" type="button">Control</button>
+    <button class="tab" id="tab-firmware" data-page="firmware" role="tab" aria-controls="page-firmware" type="button">Firmware update</button>
+  </div>
+
+  <div class="page" id="page-control" role="tabpanel" aria-labelledby="tab-control">
+  <div class="drive-grid">
+    <div class="drive-panel" data-dir="fwd">
+      <div class="drive-head">
+        <span class="dir-label">Forward</span>
+        <span class="duty-readout"><span id="fwdValue">50</span>%</span>
+      </div>
+      <div class="meter"><span id="fwdMeter"></span></div>
+      <input type="range" id="fwdSlider" min="0" max="100" value="50" aria-label="Forward duty cycle">
+      <button class="drive-btn" id="fwdBtn" type="button" disabled>Drive Forward &rarr;</button>
+    </div>
+
+    <div class="drive-panel" data-dir="rev">
+      <div class="drive-head">
+        <span class="dir-label">Reverse</span>
+        <span class="duty-readout"><span id="revValue">50</span>%</span>
+      </div>
+      <div class="meter"><span id="revMeter"></span></div>
+      <input type="range" id="revSlider" min="0" max="100" value="50" aria-label="Reverse duty cycle">
+      <button class="drive-btn" id="revBtn" type="button" disabled>&larr; Drive Reverse</button>
+    </div>
+  </div>
+
+  <div class="panel-block">
+    <div class="secondary-row">
+      <button class="btn-stop" id="stopBtn" type="button" disabled>Stop</button>
+      <button class="btn-brake" id="brakeBtn" type="button" disabled>Brake</button>
+      <button id="statusBtn" type="button" disabled>Status</button>
+      <label class="auto-poll"><input type="checkbox" id="autoPoll" disabled><span>Auto status (1 s)</span></label>
+      <form class="manual-form" id="manualForm">
+        <input type="text" id="manualInput" placeholder="raw command, e.g. F30" disabled autocomplete="off">
+        <button id="manualSend" type="submit" disabled>Send</button>
+      </form>
+    </div>
+    <div class="protocol-note" style="margin-top: 12px;">
+      <b>F</b>0&ndash;100 forward &middot; <b>R</b>0&ndash;100 reverse &middot; <b>S</b> stop (coast) &middot; <b>B</b> brake &middot; <b>G</b>1&ndash;16 position to gear &middot; <b>Z</b> teach zero &middot; <b>A?</b> read angles &middot; <b>A</b>n=deg set gear n &middot; <b>AR</b> default angles &middot; <b>?</b> status (reply shown in Traffic log below)
+    </div>
+  </div>
+
+  <div class="panel-block">
+    <span class="label">Status</span>
+    <div class="status-grid" id="statusGrid">
+      <div class="status-cell stale" data-key="dir"><span class="k">Dir</span><span class="v">&mdash;</span></div>
+      <div class="status-cell stale" data-key="duty"><span class="k">Duty</span><span class="v">&mdash;</span></div>
+      <div class="status-cell stale" data-key="fault"><span class="k">Fault</span><span class="v">&mdash;</span></div>
+      <div class="status-cell stale" data-key="angle"><span class="k">Angle</span><span class="v">&mdash;</span></div>
+      <div class="status-cell stale" data-key="gear"><span class="k">Gear (cmd/rep)</span><span class="v">&mdash;</span></div>
+      <div class="status-cell stale" data-key="pos"><span class="k">Positioning</span><span class="v">&mdash;</span></div>
+      <div class="status-cell stale" data-key="zero"><span class="k">Zero (raw)</span><span class="v">&mdash;</span></div>
+      <div class="status-cell stale" data-key="vbat"><span class="k">Supply</span><span class="v">&mdash;</span></div>
+      <div class="status-cell stale" data-key="ima"><span class="k">Motor current</span><span class="v">&mdash;</span></div>
+    </div>
+    <div class="protocol-note" style="margin-top: 10px;">Updates whenever a <b>STATUS</b> line is received: press Status, above, to request one, or tick Auto status to request one every second (STATUS lines are then kept out of the Traffic log).</div>
+  </div>
+
+  <div class="panel-block">
+    <span class="label">Gear position</span>
+    <div class="gear-row" id="gearRow" style="margin-top: 10px;">
+      <!-- Filled in by the script below (labels from the board's A? table). -->
+    </div>
+    <div class="protocol-note" style="margin-top: 10px;">
+      Drives the motor closed-loop to that gear's angle setpoint; sending F/R/S/B cancels an in-progress move.
+    </div>
+  </div>
+
+  <div class="panel-block">
+    <div class="head-row">
+      <span class="label">Gear angles</span>
+      <span class="angle-src" id="angleSrc">built-in defaults &ndash; not read from the board</span>
+    </div>
+    <div class="angle-grid" id="angleGrid">
+      <!-- Filled in by the script below. -->
+    </div>
+    <div class="secondary-row" style="margin-top: 12px;">
+      <button id="angleReadBtn" type="button" disabled>Read from board</button>
+      <button class="btn-zero" id="angleSaveBtn" type="button" disabled>Save changes</button>
+      <button id="angleRevertBtn" type="button" disabled>Revert</button>
+      <button class="btn-brake" id="angleResetBtn" type="button" disabled>Reset to defaults</button>
+    </div>
+    <div class="fw-msg" id="angleMsg"></div>
+    <div class="protocol-note" style="margin-top: 10px;">
+      Setpoints in degrees from the taught zero: whole numbers, 0&ndash;300&deg;, rising from G1 to G16 at least 5&deg; apart. Save sends one <b>A</b>n=deg per changed gear (in an order the board accepts at every step); the board keeps the table in flash, so it survives power cycles and firmware updates. A move already running keeps its old target. G16 also sets the boot-time wrap point (the middle of the arc beyond G16): at power-off keep the shaft within (360&minus;G16)/2 degrees below zero or above G16.
+    </div>
+  </div>
+
+  <div class="panel-block">
+    <span class="label">Zero calibration</span>
+    <div class="secondary-row" style="margin-top: 10px;">
+      <button class="btn-zero" id="zeroBtn" type="button" disabled>Teach zero here</button>
+    </div>
+    <div class="protocol-note" style="margin-top: 10px;">
+      Jog to the reference position first (Drive / Stop / Brake), then teach: the shaft's current angle becomes 0&deg; and its raw encoder angle is saved to flash, so gear positions survive power cycles. Ignored while a gear move is running. The Zero cell in Status, above, shows the saved raw angle, or &ldquo;not taught&rdquo; (boot position = 0&deg;).
+    </div>
+  </div>
+  </div>
+
+  <div class="page" id="page-firmware" role="tabpanel" aria-labelledby="tab-firmware" hidden>
+    <div class="panel-block">
+      <div class="head-row">
+        <span class="label">Images on the board</span>
+        <button class="btn-clear" id="fwReadBtn" type="button" disabled>Read state</button>
+      </div>
+      <div class="table-wrap">
+        <table class="slot-table">
+          <thead><tr><th>Slot</th><th>Version</th><th>Hash</th><th>Flags</th></tr></thead>
+          <tbody id="fwSlots"><tr><td colspan="4" class="empty">not read yet &ndash; connect first</td></tr></tbody>
+        </table>
+      </div>
+      <div class="protocol-note" style="margin-top: 10px;">
+        Slot 0 is the running image, slot 1 receives uploads. A reset with slot 1 marked for test makes MCUboot swap them; the swap is reverted on the following reset unless the new image gets confirmed, which this firmware does itself ~5 s after a test boot.
+      </div>
+    </div>
+
+    <div class="panel-block">
+      <span class="label">Image file</span>
+      <div class="file-row">
+        <input type="file" id="fwFile" accept=".bin,.zip">
+      </div>
+      <div class="status-grid" id="fwInfo">
+        <div class="status-cell stale" data-key="name"><span class="k">File</span><span class="v">&mdash;</span></div>
+        <div class="status-cell stale" data-key="version"><span class="k">Version</span><span class="v">&mdash;</span></div>
+        <div class="status-cell stale" data-key="size"><span class="k">Size</span><span class="v">&mdash;</span></div>
+        <div class="status-cell stale" data-key="hash"><span class="k">Hash</span><span class="v">&mdash;</span></div>
+        <div class="status-cell stale" data-key="compare"><span class="k">Vs. board</span><span class="v">&mdash;</span></div>
+      </div>
+      <div class="protocol-note" style="margin-top: 10px;">
+        <b>zephyr.signed.bin</b> (build/DTS-CS01_54L15xx/zephyr/) or <b>dfu_application.zip</b> (build/). Bump VERSION for every image: one identical to slot 0 is refused here, since the board would silently skip it.
+      </div>
+    </div>
+
+    <div class="panel-block">
+      <div class="head-row">
+        <span class="label">Update</span>
+        <a class="guide-link" href="firmware-guide.html" target="_blank" rel="noopener">操作說明 &#8599;</a>
+      </div>
+      <div class="secondary-row" style="margin-top: 10px;">
+        <button class="btn-primary" id="fwUpdateBtn" type="button" disabled>Update</button>
+        <button class="btn-brake" id="fwCancelBtn" type="button" hidden>Cancel upload</button>
+        <div class="spacer"></div>
+        <label class="auto-poll">Chunk
+          <select id="fwChunk">
+            <option value="auto" selected>auto</option>
+            <option value="2048">2048 B</option>
+            <option value="1024">1024 B</option>
+            <option value="512">512 B</option>
+            <option value="128">128 B</option>
+          </select>
+        </label>
+      </div>
+      <ol class="steps" id="fwSteps">
+        <li data-step="check">Check the file against the board</li>
+        <li data-step="upload">Upload to slot 1</li>
+        <li data-step="test">Mark slot 1 for a test boot</li>
+        <li data-step="reset">Reset &ndash; MCUboot swaps the images</li>
+        <li data-step="reconnect">Reconnect</li>
+        <li data-step="verify">Verify the new image runs and gets confirmed</li>
+      </ol>
+      <div class="meter fw-meter"><span id="fwMeter"></span></div>
+      <div class="protocol-note" id="fwProgress" style="margin-top: 6px;">&nbsp;</div>
+      <div class="fw-msg" id="fwMsg" role="status"></div>
+    </div>
+
+    <div class="panel-block">
+      <span class="label">Switch back</span>
+      <div class="secondary-row" style="margin-top: 10px;">
+        <button class="btn-zero" id="fwSwitchBtn" type="button" disabled>Switch to slot 1</button>
+      </div>
+      <div class="protocol-note" style="margin-top: 10px;">
+        After an update, slot 1 still holds the previous image (MCUboot swaps the slots, it doesn't overwrite). This test-boots it, reconnects and waits for it to confirm itself, so the two images trade places &ndash; press again to switch forward. Unavailable once slot 1 has been overwritten by another upload.
+      </div>
+    </div>
+
+    <div class="panel-block">
+      <span class="label">Single steps</span>
+      <div class="secondary-row" style="margin-top: 10px;">
+        <button id="fwUploadBtn" type="button" disabled>Upload only</button>
+        <button id="fwTestBtn" type="button" disabled>Mark slot 1 for test</button>
+        <button id="fwConfirmBtn" type="button" disabled>Confirm running image</button>
+        <button class="btn-brake" id="fwResetBtn" type="button" disabled>Reset board</button>
+      </div>
+      <div class="protocol-note" style="margin-top: 10px;">
+        The board refuses to start an upload or to reset while the motor is moving (a G move or an F/R jog); stop it on the Control tab first. Chunk &ldquo;auto&rdquo; sizes each request from the board's SMP buffer size.
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-block">
+    <div class="terminal-head">
+      <span class="label">Traffic log</span>
+      <button class="btn-clear" id="clearBtn" type="button">Clear</button>
+    </div>
+    <div class="terminal" id="terminal" role="log" aria-live="polite"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const NUS_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+  const NUS_RX_CHAR = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // write: browser -> board
+  const NUS_TX_CHAR = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // notify: board -> browser
+  const WRITE_CHUNK = 20;
+
+  const el = (id) => document.getElementById(id);
+  const statusDot = el('statusDot');
+  const statusName = el('statusName');
+  const statusDetail = el('statusDetail');
+  const connectBtn = el('connectBtn');
+  const disconnectBtn = el('disconnectBtn');
+  const supportNote = el('supportNote');
+  const connectPanel = el('connectPanel');
+  const terminal = el('terminal');
+
+  // Built-in table, angle_set_default[] in src/gearbox_can.c (index 0 there is
+  // unused; here [0] is G1). Shown until the board answers A? with its live
+  // table (firmware 3.4.3+), which may have been edited.
+  const DEFAULT_GEAR_ANGLES = [20, 35, 51, 66, 81, 97, 112, 127, 143, 158, 173, 189, 204, 219, 235, 250];
+  const GEAR_COUNT = DEFAULT_GEAR_ANGLES.length;
+  // Must match GEARBOX_ANGLE_MAX_DEG / GEARBOX_ANGLE_MIN_SPACING_DEG in src/gearbox_can.h.
+  const ANGLE_MAX_DEG = 300;
+  const ANGLE_MIN_SPACING_DEG = 5;
+
+  // The board's table as last reported, or null until an A? reply arrives.
+  let boardAngles = null;
+
+  const gearRow = el('gearRow');
+  const gearBtns = DEFAULT_GEAR_ANGLES.map((deg, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'gear-btn';
+    btn.type = 'button';
+    btn.disabled = true;
+    btn.dataset.gear = String(i + 1);
+    btn.innerHTML = `<span>G${i + 1}</span><span class="gear-deg"></span>`;
+    gearRow.appendChild(btn);
+    return btn;
+  });
+
+  function renderGearButtons() {
+    const table = boardAngles || DEFAULT_GEAR_ANGLES;
+    gearBtns.forEach((btn, i) => {
+      btn.title = `G${i + 1}: ${table[i]}°`;
+      btn.querySelector('.gear-deg').textContent = `${table[i]}°`;
+    });
+  }
+  renderGearButtons();
+
+  const angleGrid = el('angleGrid');
+  const angleInputs = DEFAULT_GEAR_ANGLES.map((deg, i) => {
+    const cell = document.createElement('label');
+    cell.className = 'angle-cell';
+    cell.innerHTML = `<span>G${i + 1}</span><input type="number" inputmode="numeric" min="0" max="${ANGLE_MAX_DEG}" step="1" value="${deg}" disabled aria-label="G${i + 1} angle in degrees">`;
+    angleGrid.appendChild(cell);
+    return cell.querySelector('input');
+  });
+
+  const controls = [
+    el('fwdBtn'), el('revBtn'), el('stopBtn'), el('brakeBtn'), el('statusBtn'), el('zeroBtn'),
+    el('autoPoll'),
+    el('manualInput'), el('manualSend'),
+    ...gearBtns,
+  ];
+
+  let device = null;
+  let rxChar = null;
+  let rxLineBuffer = '';
+
+  function setControlsEnabled(enabled) {
+    controls.forEach((c) => { c.disabled = !enabled; });
+    syncAngleControls();
+  }
+
+  function setState(state, detail) {
+    statusDot.dataset.state = state;
+    if (state === 'connected') {
+      statusName.textContent = device?.name || 'DTS-CS01';
+      statusDetail.textContent = detail || 'connected';
+      connectBtn.hidden = true;
+      disconnectBtn.hidden = false;
+      setControlsEnabled(true);
+    } else if (state === 'connecting') {
+      statusName.textContent = 'Connecting…';
+      statusDetail.textContent = detail || '';
+      connectBtn.hidden = true;
+      disconnectBtn.hidden = true;
+      setControlsEnabled(false);
+    } else {
+      statusName.textContent = state === 'error' ? 'Connection failed' : 'Not connected';
+      statusDetail.textContent = detail || 'Looking for “DTS-CS01_…”';
+      connectBtn.hidden = false;
+      disconnectBtn.hidden = true;
+      setControlsEnabled(false);
+    }
+    syncFwControls();
+  }
+
+  function timestamp() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  }
+
+  function log(tag, text) {
+    if (text === '') return;
+    const line = document.createElement('div');
+    line.className = 'line';
+    const tagClass = tag === 'TX' ? 'tag-tx' : tag === 'RX' ? 'tag-rx' : tag === 'SMP' ? 'tag-smp' : 'tag-sys';
+    line.innerHTML = `<span class="ts">${timestamp()}</span> <span class="${tagClass}">${tag}</span>  ${text.replace(/[<>&]/g, (c) => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}`;
+    terminal.appendChild(line);
+    terminal.scrollTop = terminal.scrollHeight;
+  }
+
+  // Web Bluetooth rejects a write while another is still in flight, on any
+  // characteristic, so every NUS command and every SMP packet goes through one
+  // chain: an auto-status poll can then never make a manual Stop/Brake (or a
+  // firmware upload chunk) fail by colliding with it.
+  let writeChain = Promise.resolve();
+
+  function queueWrite(fn) {
+    const job = writeChain.then(fn);
+    writeChain = job.catch(() => {});
+    return job;
+  }
+
+  // `quiet` keeps the TX line out of the Traffic log (used by the auto-status poll).
+  function sendCommand(cmd, quiet = false) {
+    if (!rxChar) return Promise.resolve();
+    if (!quiet) log('TX', cmd);
+    const bytes = new TextEncoder().encode(cmd + '\n');
+    return queueWrite(async () => {
+      if (!rxChar) return;
+      for (let i = 0; i < bytes.length; i += WRITE_CHUNK) {
+        const chunk = bytes.slice(i, i + WRITE_CHUNK);
+        try {
+          await rxChar.writeValueWithoutResponse(chunk);
+        } catch (e) {
+          await rxChar.writeValue(chunk);
+        }
+      }
+    });
+  }
+
+  // Auto status: ask for a STATUS every second while connected and ticked.
+  // Each poll is scheduled after the previous write finishes, so a slow link
+  // never stacks requests up.
+  const AUTO_POLL_MS = 1000;
+  const autoPollBox = el('autoPoll');
+  let autoPollTimer = null;
+  let autoPollBusy = false;
+
+  function autoPollActive() {
+    return autoPollBox.checked && rxChar !== null;
+  }
+
+  async function autoPollTick() {
+    autoPollTimer = null;
+    if (!autoPollActive()) return;
+    autoPollBusy = true;
+    try {
+      await sendCommand('?', true);
+    } catch (e) {
+      // link hiccup: the next tick simply tries again
+    }
+    autoPollBusy = false;
+    if (autoPollActive()) autoPollTimer = setTimeout(autoPollTick, AUTO_POLL_MS);
+  }
+
+  function syncAutoPoll() {
+    if (autoPollActive()) {
+      if (autoPollTimer === null && !autoPollBusy) autoPollTimer = setTimeout(autoPollTick, 0);
+    } else if (autoPollTimer !== null) {
+      clearTimeout(autoPollTimer);
+      autoPollTimer = null;
+    }
+  }
+
+  const statusCells = new Map(
+    Array.from(document.querySelectorAll('#statusGrid .status-cell')).map((c) => [c.dataset.key, c])
+  );
+
+  // Parses a "STATUS dir=FWD duty=50% fault=0 angle=12.34 gear=2/2 pos=0
+  // zero=123.45 vbat=11.94V ima=120mA" line (see motor_send_status() in
+  // src/main.c) into the status-grid readout; zero is the raw encoder angle
+  // taught with Z, or "none". gear/pos/zero/vbat/ima are only present when the
+  // firmware has CONFIG_BT_NUS_GEARBOX_CAN / CONFIG_BT_NUS_ADC_SENSE enabled,
+  // so cells with no match in a given line are simply left at their last value.
+  function updateStatusPanel(line) {
+    if (!line.startsWith('STATUS')) return;
+    const fields = {};
+    for (const m of line.matchAll(/(\w+)=([^\s]+)/g)) {
+      fields[m[1]] = m[2];
+    }
+
+    const setCell = (key, text) => {
+      const cell = statusCells.get(key);
+      if (!cell || text === undefined) return;
+      cell.classList.remove('stale');
+      const v = cell.querySelector('.v');
+      v.textContent = text;
+      v.removeAttribute('data-fault');
+    };
+
+    setCell('dir', fields.dir);
+    setCell('duty', fields.duty);
+    if (fields.fault !== undefined) {
+      setCell('fault', fields.fault === '1' ? 'FAULT' : 'OK');
+      statusCells.get('fault').querySelector('.v').dataset.fault = fields.fault;
+    }
+    if (fields.angle !== undefined) setCell('angle', `${fields.angle}°`);
+    setCell('gear', fields.gear);
+    if (fields.gear !== undefined) {
+      const rep = Number(fields.gear.split('/')[1]);
+      gearBtns.forEach((btn) => btn.classList.toggle('current', Number(btn.dataset.gear) === rep));
+    }
+    if (fields.pos !== undefined) setCell('pos', fields.pos === '1' ? 'active' : 'idle');
+    if (fields.zero !== undefined) {
+      setCell('zero', fields.zero === 'none' ? 'not taught' : `${fields.zero}°`);
+    }
+    setCell('vbat', fields.vbat);
+    setCell('ima', fields.ima);
+  }
+
+  function onNotify(event) {
+    const text = new TextDecoder().decode(event.target.value);
+    rxLineBuffer += text;
+    const parts = rxLineBuffer.split(/\r?\n/);
+    rxLineBuffer = parts.pop();
+    parts.forEach((p) => {
+      if (!(autoPollBox.checked && p.startsWith('STATUS'))) log('RX', p);
+      updateStatusPanel(p);
+      handleAngleLine(p);
+    });
+  }
+
+  function onDisconnected() {
+    if (rxLineBuffer) { log('RX', rxLineBuffer); rxLineBuffer = ''; }
+    log('SYS', 'disconnected');
+    rxChar = null;
+    smpChar = null;
+    smpFailAll('disconnected');
+    syncAutoPoll();
+    angleReplyFail('disconnected');
+    setState('disconnected');
+    statusCells.forEach((cell) => cell.classList.add('stale'));
+  }
+
+  // Opens GATT on the already-picked `device` and finds NUS plus, if the
+  // firmware has it (CONFIG_BT_NUS_DFU), the SMP service. Also used to
+  // reconnect without the device picker after a firmware-update reset.
+  // addEventListener ignores a listener already registered on the same
+  // object, so re-running this can't double up notifications.
+  async function openGatt() {
+    setState('connecting', 'connecting to GATT server…');
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(NUS_SERVICE);
+    const rx = await service.getCharacteristic(NUS_RX_CHAR);
+    const tx = await service.getCharacteristic(NUS_TX_CHAR);
+    await tx.startNotifications();
+    tx.addEventListener('characteristicvaluechanged', onNotify);
+
+    let smp = null;
+    try {
+      const smpService = await server.getPrimaryService(SMP_SERVICE);
+      smp = await smpService.getCharacteristic(SMP_CHAR);
+      await smp.startNotifications();
+      smp.addEventListener('characteristicvaluechanged', onSmpNotify);
+    } catch (e) {
+      smp = null;
+    }
+
+    rxChar = rx;
+    smpChar = smp;
+    setState('connected', smp ? 'NUS RX/TX + SMP ready' : 'NUS RX/TX ready (no SMP service)');
+    log('SYS', `connected to ${device.name || 'device'}`);
+    syncAutoPoll();
+    if (!angleBusy) readAngles(true);
+    if (smp) {
+      if (!fwBusy) refreshState().catch((e) => log('SYS', `SMP: ${e.message}`));
+    } else if (!fwBusy) {
+      fwMsg('error', 'This firmware has no SMP service (built without MCUboot / CONFIG_BT_NUS_DFU?).');
+    }
+  }
+
+  async function connect() {
+    try {
+      setState('connecting', 'waiting for device picker…');
+      device = await navigator.bluetooth.requestDevice({
+        // Only this board ("DTS-CS01_xxxxxx", or plain "DTS-CS01" if its
+        // address could not be read), so other NUS devices nearby are never
+        // offered and sent motor commands by mistake.
+        filters: [{ namePrefix: 'DTS-CS01', services: [NUS_SERVICE] }],
+        optionalServices: [NUS_SERVICE, SMP_SERVICE],
+      });
+      device.addEventListener('gattserverdisconnected', onDisconnected);
+      await openGatt();
+    } catch (err) {
+      console.error(err);
+      setState('error', err.message || String(err));
+      log('SYS', `connect failed: ${err.message || err}`);
+      setTimeout(() => { if (statusDot.dataset.state === 'error') setState('disconnected'); }, 4000);
+    }
+  }
+
+  function disconnect() {
+    if (device?.gatt?.connected) {
+      device.gatt.disconnect();
+    } else {
+      onDisconnected();
+    }
+  }
+
+  connectBtn.addEventListener('click', connect);
+  disconnectBtn.addEventListener('click', disconnect);
+  el('clearBtn').addEventListener('click', () => { terminal.innerHTML = ''; });
+
+  function wireSlider(sliderId, valueId, meterId) {
+    const slider = el(sliderId);
+    const value = el(valueId);
+    const meter = el(meterId);
+    const update = () => {
+      value.textContent = slider.value;
+      meter.style.width = `${slider.value}%`;
+    };
+    slider.addEventListener('input', update);
+    update();
+  }
+  wireSlider('fwdSlider', 'fwdValue', 'fwdMeter');
+  wireSlider('revSlider', 'revValue', 'revMeter');
+
+  el('fwdBtn').addEventListener('click', () => sendCommand('F' + el('fwdSlider').value));
+  el('revBtn').addEventListener('click', () => sendCommand('R' + el('revSlider').value));
+  el('stopBtn').addEventListener('click', () => sendCommand('S'));
+  el('brakeBtn').addEventListener('click', () => sendCommand('B'));
+  el('statusBtn').addEventListener('click', () => sendCommand('?'));
+  autoPollBox.addEventListener('change', syncAutoPoll);
+
+  // Z writes to flash, so confirm first; the firmware applies it on its next
+  // 5 ms tick, so ask for a status shortly after to refresh the Zero cell.
+  el('zeroBtn').addEventListener('click', async () => {
+    const ok = window.confirm(
+      'Teach the shaft\'s current position as 0° and save it to flash?\n\n' +
+      'Gear setpoints G1–G16 are measured from this position.'
+    );
+    if (!ok) return;
+    await sendCommand('Z');
+    setTimeout(() => sendCommand('?'), 400);
+  });
+
+  gearBtns.forEach((btn) => {
+    btn.addEventListener('click', () => sendCommand('G' + btn.dataset.gear));
+  });
+
+  // --- gear angle editor (A?, A<n>=<deg>, AR; see gear_angle_cmd() in src/main.c) ---
+  const angleMsgEl = el('angleMsg');
+  let angleBusy = false;
+  let angleParts = {};          // ANGLES lines collected so far, keyed by first gear
+  let angleTableWaiters = [];   // called when a complete table has arrived
+  let angleReplyWaiter = null;  // { resolve, reject, timer } for one ANGLE OK/ERR line
+
+  function angleMsg(kind, text) {
+    angleMsgEl.dataset.kind = kind;
+    angleMsgEl.textContent = text;
+  }
+
+  function draftAngles() {
+    return angleInputs.map((inp) => (inp.value.trim() === '' ? NaN : Number(inp.value)));
+  }
+
+  // Index of every entry that breaks the firmware's rules.
+  function invalidAngles(table) {
+    const bad = new Set();
+    table.forEach((v, i) => {
+      if (!Number.isInteger(v) || v < 0 || v > ANGLE_MAX_DEG) bad.add(i);
+      if (i > 0 && Number.isInteger(table[i - 1]) && Number.isInteger(v) &&
+          v < table[i - 1] + ANGLE_MIN_SPACING_DEG) {
+        bad.add(i - 1);
+        bad.add(i);
+      }
+    });
+    return bad;
+  }
+
+  function syncAngleControls() {
+    const connected = rxChar !== null;
+    const loaded = boardAngles !== null;
+    const draft = draftAngles();
+    const bad = invalidAngles(draft);
+    const base = boardAngles || DEFAULT_GEAR_ANGLES;
+    let changed = 0;
+    angleInputs.forEach((inp, i) => {
+      const cell = inp.parentElement;
+      const isChanged = draft[i] !== base[i];
+      if (isChanged) changed++;
+      cell.classList.toggle('changed', isChanged && !bad.has(i));
+      cell.classList.toggle('bad', bad.has(i));
+      inp.disabled = !connected || !loaded || angleBusy;
+    });
+    el('angleReadBtn').disabled = !connected || angleBusy;
+    el('angleSaveBtn').disabled = !connected || !loaded || angleBusy || changed === 0 || bad.size > 0;
+    el('angleRevertBtn').disabled = !loaded || angleBusy || changed === 0;
+    el('angleResetBtn').disabled = !connected || !loaded || angleBusy;
+  }
+
+  function fillAngleInputs(table) {
+    angleInputs.forEach((inp, i) => { inp.value = String(table[i]); });
+    syncAngleControls();
+  }
+
+  // "ANGLES 1:20,35,...,127" + "ANGLES 9:143,...,250" make up one table;
+  // "ANGLE OK ..." / "ANGLE ERR ..." answer one A<n>=<deg> or AR.
+  function handleAngleLine(line) {
+    let m = line.match(/^ANGLES (\d+):([\d,]+)$/);
+    if (m) {
+      angleParts[Number(m[1])] = m[2].split(',').map(Number);
+      const table = [];
+      for (let g = 1; g <= GEAR_COUNT;) {
+        const part = angleParts[g];
+        if (!part || part.length === 0) return;
+        table.push(...part);
+        g += part.length;
+      }
+      if (table.length !== GEAR_COUNT) return;
+      angleParts = {};
+      // Unsaved edits survive a plain re-read; they are replaced only while
+      // the editor itself is saving/resetting, or on first load.
+      const hadEdits = boardAngles !== null &&
+        draftAngles().some((v, i) => v !== boardAngles[i]);
+      boardAngles = table;
+      el('angleSrc').textContent = 'read from the board';
+      renderGearButtons();
+      if (!hadEdits || angleBusy) fillAngleInputs(table); else syncAngleControls();
+      const waiters = angleTableWaiters;
+      angleTableWaiters = [];
+      waiters.forEach((w) => w(table));
+      return;
+    }
+    m = line.match(/^ANGLE (OK|ERR)\b(.*)$/);
+    if (m && angleReplyWaiter) {
+      const w = angleReplyWaiter;
+      angleReplyWaiter = null;
+      clearTimeout(w.timer);
+      w.resolve({ ok: m[1] === 'OK', text: m[2].trim() });
+    }
+  }
+
+  function angleReplyFail(reason) {
+    angleParts = {};
+    if (angleReplyWaiter) {
+      const w = angleReplyWaiter;
+      angleReplyWaiter = null;
+      clearTimeout(w.timer);
+      w.reject(new Error(reason));
+    }
+  }
+
+  function waitAngleReply(timeoutMs = 2000) {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        angleReplyWaiter = null;
+        reject(new Error('no reply from the board'));
+      }, timeoutMs);
+      angleReplyWaiter = { resolve, reject, timer };
+    });
+  }
+
+  function waitAngleTable(timeoutMs = 2000) {
+    return new Promise((resolve, reject) => {
+      const done = (t) => { clearTimeout(timer); resolve(t); };
+      const timer = setTimeout(() => {
+        angleTableWaiters = angleTableWaiters.filter((w) => w !== done);
+        reject(new Error('no ANGLES reply'));
+      }, timeoutMs);
+      angleTableWaiters.push(done);
+    });
+  }
+
+  async function readAngles(onConnect = false) {
+    angleParts = {};
+    const wait = waitAngleTable();
+    wait.catch(() => {});
+    try {
+      await sendCommand('A?', onConnect);
+      await wait;
+      if (!onConnect) angleMsg('ok', 'Table read from the board.');
+    } catch (e) {
+      angleMsg('error', boardAngles === null
+        ? 'The board did not answer A? (firmware older than 3.4.3 has fixed angles).'
+        : `Read failed: ${e.message}`);
+    }
+    syncAngleControls();
+  }
+
+  // Picks the next change that is legal against the board's table as it
+  // stands, so moving several neighbours the same way never trips the
+  // ordering check halfway (e.g. shifting every gear up sends G16 first).
+  function nextAngleStep(current, target) {
+    for (let i = 0; i < GEAR_COUNT; i++) {
+      if (current[i] === target[i]) continue;
+      const lo = i === 0 ? 0 : current[i - 1] + ANGLE_MIN_SPACING_DEG;
+      const hi = i === GEAR_COUNT - 1 ? ANGLE_MAX_DEG : current[i + 1] - ANGLE_MIN_SPACING_DEG;
+      if (target[i] >= lo && target[i] <= hi) return i;
+    }
+    return -1;
+  }
+
+  async function saveAngles() {
+    const target = draftAngles();
+    if (invalidAngles(target).size > 0 || boardAngles === null) return;
+    angleBusy = true;
+    syncAngleControls();
+    const current = boardAngles.slice();
+    let sent = 0;
+    let result;
+    try {
+      for (;;) {
+        const i = nextAngleStep(current, target);
+        if (i < 0) break;
+        const reply = waitAngleReply();
+        reply.catch(() => {});
+        await sendCommand(`A${i + 1}=${target[i]}`);
+        const r = await reply;
+        if (!r.ok) throw new Error(`board refused ${r.text}`);
+        current[i] = target[i];
+        sent++;
+      }
+      if (current.some((v, i) => v !== target[i])) throw new Error('could not find an order the board accepts');
+      result = ['ok', `Saved ${sent} change${sent === 1 ? '' : 's'} to the board.`];
+    } catch (e) {
+      result = ['error', `Save stopped after ${sent} change${sent === 1 ? '' : 's'}: ${e.message}`];
+    }
+    // Re-read while still busy so the editor ends up showing exactly what the
+    // board stored, even after a refusal part-way through.
+    await readAngles();
+    angleBusy = false;
+    angleMsg(...result);
+    syncAngleControls();
+  }
+
+  angleInputs.forEach((inp) => inp.addEventListener('input', () => syncAngleControls()));
+  el('angleReadBtn').addEventListener('click', () => readAngles());
+  el('angleSaveBtn').addEventListener('click', () => saveAngles());
+  el('angleRevertBtn').addEventListener('click', () => {
+    fillAngleInputs(boardAngles || DEFAULT_GEAR_ANGLES);
+    angleMsg('', '');
+  });
+  el('angleResetBtn').addEventListener('click', async () => {
+    const ok = window.confirm(
+      'Replace the board\'s gear angles with the built-in table?\n\n' +
+      DEFAULT_GEAR_ANGLES.map((d, i) => `G${i + 1} ${d}°`).join(', ')
+    );
+    if (!ok) return;
+    angleBusy = true;
+    syncAngleControls();
+    let result;
+    try {
+      const reply = waitAngleReply();
+      reply.catch(() => {});
+      await sendCommand('AR');
+      await reply;
+      result = ['ok', 'Board reset to the built-in table.'];
+    } catch (e) {
+      result = ['error', `Reset failed: ${e.message}`];
+    }
+    await readAngles();
+    angleBusy = false;
+    angleMsg(...result);
+    syncAngleControls();
+  });
+
+  el('manualForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = el('manualInput');
+    const cmd = input.value.trim();
+    if (cmd) sendCommand(cmd);
+    input.value = '';
+  });
+
+  // --- page tabs ---
+  const tabs = Array.from(document.querySelectorAll('.tab'));
+
+  function showPage(name) {
+    tabs.forEach((t) => {
+      const on = t.dataset.page === name;
+      t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
+      el('page-' + t.dataset.page).hidden = !on;
+    });
+    try { localStorage.setItem('ble-console.page', name); } catch (e) { /* storage blocked */ }
+  }
+
+  tabs.forEach((t) => t.addEventListener('click', () => showPage(t.dataset.page)));
+  let initialPage = 'control';
+  try { initialPage = localStorage.getItem('ble-console.page') || 'control'; } catch (e) { /* storage blocked */ }
+  showPage(tabs.some((t) => t.dataset.page === initialPage) ? initialPage : 'control');
+
+  // =====================================================================
+  // Firmware update: MCUmgr SMP (see src/dfu.c) over the same connection.
+  // The board allows one connection (CONFIG_BT_MAX_CONN=1), so having NUS
+  // and SMP on one link is what lets this page update the board while the
+  // Control tab can still jog it - e.g. to check that an upload is refused
+  // while the motor runs.
+  // =====================================================================
+  const SMP_SERVICE = '8d53dc1d-1db7-4cd3-868b-8a527460aa84';
+  const SMP_CHAR = 'da2e7828-fbce-4e01-ae9e-261174997c48'; // write w/o response + notify
+  const SMP_OP_READ = 0;
+  const SMP_OP_WRITE = 2;
+  const SMP_GRP_OS = 0;
+  const SMP_GRP_IMG = 1;
+  const SMP_ID_OS_RESET = 5;
+  const SMP_ID_OS_PARAMS = 6;
+  const SMP_ID_IMG_STATE = 0;
+  const SMP_ID_IMG_UPLOAD = 1;
+  const MGMT_ERR_EBUSY = 10;
+  const MGMT_ERR_NAMES = {
+    1: 'unknown error', 2: 'out of memory', 3: 'invalid value', 4: 'timeout',
+    5: 'not found', 6: 'bad state', 7: 'message too large', 8: 'not supported',
+    9: 'corrupt', 10: 'busy', 11: 'access denied',
+  };
+  // One SMP packet may span several BLE writes: the firmware reassembles them
+  // (CONFIG_MCUMGR_TRANSPORT_BT_REASSEMBLY). Web Bluetooth doesn't expose the
+  // ATT MTU; the firmware negotiates 247 itself (see connected() in main.c),
+  // so try MTU - 3 and drop to the always-safe 20 if the browser rejects it.
+  const SMP_FRAG_DEFAULT = 244;
+  const SMP_FRAG_MIN = 20;
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const toHex = (b) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+  const bytesEqual = (a, b) => !!a && !!b && a.length === b.length && a.every((x, i) => x === b[i]);
+
+  function concatBytes(parts) {
+    const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+    let off = 0;
+    parts.forEach((p) => { out.set(p, off); off += p.length; });
+    return out;
+  }
+
+  function withTimeout(promise, ms, message) {
+    let timer;
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), ms); }),
+    ]).finally(() => clearTimeout(timer));
+  }
+
+  // --- minimal CBOR: encodes maps/uint/bool/text/bytes; decodes what zcbor
+  // sends back, including the indefinite-length maps and arrays it uses ---
+  const CBOR_BREAK = Symbol('break');
+
+  function cborEncode(value) {
+    const parts = [];
+    const head = (major, n) => {
+      const m = major << 5;
+      if (n < 24) parts.push(Uint8Array.of(m | n));
+      else if (n < 0x100) parts.push(Uint8Array.of(m | 24, n));
+      else if (n < 0x10000) parts.push(Uint8Array.of(m | 25, n >> 8, n & 0xff));
+      else parts.push(Uint8Array.of(m | 26, n >>> 24, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff));
+    };
+    const enc = (v) => {
+      if (v instanceof Uint8Array) { head(2, v.length); parts.push(v); }
+      else if (typeof v === 'string') { const b = new TextEncoder().encode(v); head(3, b.length); parts.push(b); }
+      else if (typeof v === 'boolean') parts.push(Uint8Array.of(v ? 0xf5 : 0xf4));
+      else if (typeof v === 'number') { if (v >= 0) head(0, v); else head(1, -1 - v); }
+      else if (Array.isArray(v)) { head(4, v.length); v.forEach(enc); }
+      else { const keys = Object.keys(v); head(5, keys.length); keys.forEach((k) => { enc(k); enc(v[k]); }); }
+    };
+    enc(value);
+    return concatBytes(parts);
+  }
+
+  function cborDecode(bytes) {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    let p = 0;
+    const need = (n) => { if (p + n > bytes.length) throw new Error('truncated CBOR'); };
+    const arg = (ai) => {
+      if (ai < 24) return ai;
+      if (ai === 24) { need(1); return bytes[p++]; }
+      if (ai === 25) { need(2); const v = dv.getUint16(p); p += 2; return v; }
+      if (ai === 26) { need(4); const v = dv.getUint32(p); p += 4; return v; }
+      if (ai === 27) { need(8); const v = Number(dv.getBigUint64(p)); p += 8; return v; }
+      if (ai === 31) return -1; // indefinite length
+      throw new Error('bad CBOR length');
+    };
+    const str = (major, n) => {
+      if (n >= 0) { need(n); const b = bytes.slice(p, p + n); p += n; return b; }
+      const chunks = [];
+      for (let c = item(); c !== CBOR_BREAK; c = item()) {
+        chunks.push(major === 3 ? new TextEncoder().encode(c) : c);
+      }
+      return concatBytes(chunks);
+    };
+    function item() {
+      need(1);
+      const ib = bytes[p++];
+      const major = ib >> 5;
+      const ai = ib & 31;
+      if (major === 7) {
+        if (ai === 20) return false;
+        if (ai === 21) return true;
+        if (ai === 22) return null;
+        if (ai === 23) return undefined;
+        if (ai === 26) { need(4); const v = dv.getFloat32(p); p += 4; return v; }
+        if (ai === 27) { need(8); const v = dv.getFloat64(p); p += 8; return v; }
+        if (ai === 31) return CBOR_BREAK;
+        throw new Error('unsupported CBOR simple value');
+      }
+      const n = arg(ai);
+      switch (major) {
+        case 0: return n;
+        case 1: return -1 - n;
+        case 2: return str(2, n);
+        case 3: return new TextDecoder().decode(str(3, n));
+        case 4: {
+          const a = [];
+          for (let i = 0; n < 0 || i < n; i++) {
+            const v = item();
+            if (v === CBOR_BREAK) break;
+            a.push(v);
+          }
+          return a;
+        }
+        case 5: {
+          const m = {};
+          for (let i = 0; n < 0 || i < n; i++) {
+            const k = item();
+            if (k === CBOR_BREAK) break;
+            m[k] = item();
+          }
+          return m;
+        }
+        default: return item(); // tag: keep the tagged value
+      }
+    }
+    return item();
+  }
+
+  // --- SMP transport: 8-byte header + CBOR body, SMP version 2 ---
+  let smpChar = null;
+  let smpSeq = 0;
+  let smpRxBuf = new Uint8Array(0);
+  let smpFragSize = SMP_FRAG_DEFAULT;
+  const smpPending = new Map();
+
+  class SmpError extends Error {
+    constructor(rc, group) {
+      let text;
+      if (group === null && rc === MGMT_ERR_EBUSY) {
+        text = 'board busy: the motor is moving (stop it, or wait for the gear move to finish)';
+      } else if (group === null) {
+        text = `board returned rc ${rc} (${MGMT_ERR_NAMES[rc] || 'unknown'})`;
+      } else {
+        text = `board returned group ${group} error ${rc}`;
+      }
+      super(text);
+      this.rc = rc;
+      this.group = group;
+    }
+  }
+
+  function smpCheck(rsp) {
+    if (rsp.err && typeof rsp.err === 'object' && rsp.err.rc) throw new SmpError(rsp.err.rc, rsp.err.group ?? null);
+    if (rsp.rc) throw new SmpError(rsp.rc, null);
+  }
+
+  function onSmpNotify(event) {
+    const v = event.target.value;
+    smpRxBuf = concatBytes([smpRxBuf, new Uint8Array(v.buffer, v.byteOffset, v.byteLength)]);
+    while (smpRxBuf.length >= 8) {
+      const len = (smpRxBuf[2] << 8) | smpRxBuf[3];
+      if (smpRxBuf.length < 8 + len) break;
+      const pkt = smpRxBuf.slice(0, 8 + len);
+      smpRxBuf = smpRxBuf.slice(8 + len);
+      const pending = smpPending.get(pkt[6]);
+      if (!pending) continue; // late reply to a request that already timed out
+      smpPending.delete(pkt[6]);
+      clearTimeout(pending.timer);
+      try {
+        pending.resolve(len ? cborDecode(pkt.subarray(8)) : {});
+      } catch (e) {
+        pending.reject(e);
+      }
+    }
+  }
+
+  function smpFailAll(reason) {
+    smpPending.forEach((p) => { clearTimeout(p.timer); p.reject(new Error(reason)); });
+    smpPending.clear();
+    smpRxBuf = new Uint8Array(0);
+  }
+
+  // A write that throws was never sent, so retrying it is safe.
+  async function smpWriteFragment(frag) {
+    for (let attempt = 0; ; attempt++) {
+      if (!smpChar) throw new Error('disconnected');
+      try {
+        await smpChar.writeValueWithoutResponse(frag);
+        return;
+      } catch (e) {
+        if (attempt >= 3) throw e;
+        await sleep(30);
+      }
+    }
+  }
+
+  function smpWritePacket(pkt) {
+    return queueWrite(async () => {
+      for (;;) {
+        const size = smpFragSize;
+        try {
+          await smpWriteFragment(pkt.subarray(0, size));
+        } catch (e) {
+          if (size <= SMP_FRAG_MIN || !smpChar) throw e;
+          smpFragSize = SMP_FRAG_MIN;
+          log('SYS', `SMP: ${size}-byte writes rejected, falling back to ${SMP_FRAG_MIN}-byte writes`);
+          continue;
+        }
+        for (let i = size; i < pkt.length; i += size) {
+          await smpWriteFragment(pkt.subarray(i, i + size));
+        }
+        return;
+      }
+    });
+  }
+
+  function smpRequest(op, group, id, payload = {}, timeoutMs = 5000) {
+    if (!smpChar) return Promise.reject(new Error('not connected (or no SMP service)'));
+    const body = cborEncode(payload);
+    const seq = smpSeq;
+    smpSeq = (smpSeq + 1) & 0xff;
+    const header = Uint8Array.of((1 << 3) | op, 0, body.length >> 8, body.length & 0xff,
+      group >> 8, group & 0xff, seq, id);
+    const reply = new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        smpPending.delete(seq);
+        reject(new Error('SMP request timed out'));
+      }, timeoutMs);
+      smpPending.set(seq, { resolve, reject, timer });
+    });
+    smpWritePacket(concatBytes([header, body])).catch((e) => {
+      const p = smpPending.get(seq);
+      if (!p) return;
+      smpPending.delete(seq);
+      clearTimeout(p.timer);
+      p.reject(e);
+    });
+    return reply.then((rsp) => { smpCheck(rsp); return rsp; });
+  }
+
+  // --- image files: MCUboot header/TLVs, optionally inside dfu_application.zip ---
+  const IMAGE_MAGIC = 0x96f3b83d;
+  const TLV_INFO_MAGIC = 0x6907;
+  const TLV_PROT_INFO_MAGIC = 0x6908;
+  const TLV_SHA256 = 0x10;
+
+  function parseMcubootImage(bytes) {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    if (bytes.length < 32 || dv.getUint32(0, true) !== IMAGE_MAGIC) {
+      throw new Error('not a signed MCUboot image (use zephyr.signed.bin, not zephyr.bin)');
+    }
+    const hdrSize = dv.getUint16(8, true);
+    const protSize = dv.getUint16(10, true);
+    const imgSize = dv.getUint32(12, true);
+    const ver = [bytes[20], bytes[21], dv.getUint16(22, true), dv.getUint32(24, true)];
+
+    let off = hdrSize + imgSize;
+    if (protSize > 0) {
+      if (dv.getUint16(off, true) !== TLV_PROT_INFO_MAGIC) throw new Error('bad protected TLV area');
+      off += protSize;
+    }
+    if (off + 4 > bytes.length || dv.getUint16(off, true) !== TLV_INFO_MAGIC) {
+      throw new Error('image has no TLV area (truncated file?)');
+    }
+    const end = off + dv.getUint16(off + 2, true);
+    let hash = null;
+    for (let p = off + 4; p + 4 <= end;) {
+      const type = dv.getUint16(p, true);
+      const len = dv.getUint16(p + 2, true);
+      if (type === TLV_SHA256) hash = bytes.slice(p + 4, p + 4 + len);
+      p += 4 + len;
+    }
+    if (!hash) throw new Error('image has no SHA-256 TLV');
+    // Same format img_mgmt uses when it reports a slot's version.
+    const version = ver.slice(0, 3).join('.') + (ver[3] ? `.${ver[3]}` : '');
+    return { version, verParts: ver, hash };
+  }
+
+  async function extractBinFromZip(bytes) {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    let eocd = -1;
+    for (let p = bytes.length - 22; p >= Math.max(0, bytes.length - 65557); p--) {
+      if (dv.getUint32(p, true) === 0x06054b50) { eocd = p; break; }
+    }
+    if (eocd < 0) throw new Error('not a valid zip file');
+
+    const entries = [];
+    let p = dv.getUint32(eocd + 16, true);
+    for (let i = dv.getUint16(eocd + 10, true); i > 0; i--) {
+      if (dv.getUint32(p, true) !== 0x02014b50) throw new Error('corrupt zip directory');
+      const nameLen = dv.getUint16(p + 28, true);
+      entries.push({
+        name: new TextDecoder().decode(bytes.subarray(p + 46, p + 46 + nameLen)),
+        method: dv.getUint16(p + 10, true),
+        size: dv.getUint32(p + 20, true),
+        local: dv.getUint32(p + 42, true),
+      });
+      p += 46 + nameLen + dv.getUint16(p + 30, true) + dv.getUint16(p + 32, true);
+    }
+
+    const read = async (entry) => {
+      const l = entry.local;
+      const start = l + 30 + dv.getUint16(l + 26, true) + dv.getUint16(l + 28, true);
+      const data = bytes.slice(start, start + entry.size);
+      if (entry.method === 0) return data;
+      if (entry.method !== 8) throw new Error(`unsupported zip compression (${entry.method})`);
+      const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    };
+
+    let wanted = null;
+    const manifest = entries.find((e) => e.name === 'manifest.json');
+    if (manifest) {
+      try {
+        const m = JSON.parse(new TextDecoder().decode(await read(manifest)));
+        const app = (m.files || []).find((f) => f.image_index === '0' || f.type === 'application');
+        wanted = app ? app.file : null;
+      } catch (e) { /* fall back to the first .bin */ }
+    }
+    const entry = entries.find((e) => e.name === wanted) || entries.find((e) => e.name.endsWith('.bin'));
+    if (!entry) throw new Error('no .bin image in the zip');
+    return { name: entry.name, bytes: await read(entry) };
+  }
+
+  // --- firmware page state and UI ---
+  const fwSlotsBody = el('fwSlots');
+  const fwInfoCells = new Map(
+    Array.from(document.querySelectorAll('#fwInfo .status-cell')).map((c) => [c.dataset.key, c])
+  );
+  const fwMeter = el('fwMeter');
+  const fwProgress = el('fwProgress');
+  const fwMsgEl = el('fwMsg');
+  const fwChunk = el('fwChunk');
+  const fwUpdateBtn = el('fwUpdateBtn');
+  const fwUploadBtn = el('fwUploadBtn');
+  const fwCancelBtn = el('fwCancelBtn');
+  const fwSwitchBtn = el('fwSwitchBtn');
+  const fwPlainBtns = [el('fwReadBtn'), el('fwTestBtn'), el('fwConfirmBtn'), el('fwResetBtn')];
+
+  let fwImage = null;  // { name, bytes, version, verParts, hash, sha256 }
+  let fwSlots = null;  // img_mgmt "images" array from the last state read
+  let fwBusy = false;
+  let fwCancel = false;
+  let fwStep = null;
+
+  function syncFwControls() {
+    const ready = smpChar !== null && !fwBusy;
+    fwPlainBtns.forEach((b) => { b.disabled = !ready; });
+    fwUpdateBtn.disabled = !(ready && fwImage);
+    fwUploadBtn.disabled = !(ready && fwImage);
+    const s1 = slotOf(1);
+    fwSwitchBtn.disabled = !(ready && s1 && s1.bootable !== false);
+    fwSwitchBtn.textContent = s1 ? `Switch to slot 1 (${s1.version})` : 'Switch to slot 1';
+    fwCancelBtn.hidden = !fwBusy;
+    fwChunk.disabled = fwBusy;
+  }
+
+  function fwMsg(kind, text) {
+    fwMsgEl.dataset.kind = kind;
+    fwMsgEl.textContent = text;
+  }
+
+  function step(name, state, note = '') {
+    const li = el('fwSteps').querySelector(`[data-step="${name}"]`);
+    li.dataset.state = state;
+    li.querySelector('.step-note')?.remove();
+    if (note) {
+      const span = document.createElement('span');
+      span.className = 'step-note';
+      span.textContent = note;
+      li.appendChild(span);
+    }
+    if (state === 'active') fwStep = name;
+  }
+
+  function resetSteps() {
+    el('fwSteps').querySelectorAll('li').forEach((li) => step(li.dataset.step, ''));
+    fwStep = null;
+  }
+
+  function setProgress(done, total, base = 0, t0 = 0) {
+    fwMeter.style.width = total ? `${(done / total) * 100}%` : '0%';
+    if (!total) { fwProgress.innerHTML = '&nbsp;'; return; }
+    let text = `${((done / total) * 100).toFixed(1)}% · ${(done / 1024).toFixed(1)} / ${(total / 1024).toFixed(1)} KB`;
+    const secs = t0 ? (performance.now() - t0) / 1000 : 0;
+    const rate = secs > 0 ? (done - base) / secs : 0;
+    if (rate > 0) {
+      text += ` · ${(rate / 1024).toFixed(1)} KB/s`;
+      text += done < total ? ` · ~${Math.ceil((total - done) / rate)} s left` : ` · ${secs.toFixed(1)} s`;
+    }
+    fwProgress.textContent = text;
+  }
+
+  const slotOf = (slot) => (fwSlots || []).find((s) => (s.image ?? 0) === 0 && s.slot === slot);
+
+  function renderSlots() {
+    fwSlotsBody.innerHTML = '';
+    if (!fwSlots || fwSlots.length === 0) {
+      fwSlotsBody.innerHTML = `<tr><td colspan="4" class="empty">${fwSlots ? 'no images reported' : 'not read yet'}</td></tr>`;
+      return;
+    }
+    fwSlots.forEach((s) => {
+      const tr = document.createElement('tr');
+      const chips = [];
+      if (s.active) chips.push(['active', 'ok']);
+      if (s.confirmed) chips.push(['confirmed', 'ok']);
+      else chips.push(['unconfirmed', 'warn']);
+      if (s.pending) chips.push(['pending (test)', 'warn']);
+      if (s.permanent) chips.push(['permanent', 'warn']);
+      if (s.bootable === false) chips.push(['not bootable', 'bad']);
+      const hash = s.hash instanceof Uint8Array ? toHex(s.hash) : '';
+      tr.innerHTML = `<td>${s.slot}</td><td></td><td title="${hash}">${hash.slice(0, 16)}${hash ? '…' : ''}</td><td></td>`;
+      tr.children[1].textContent = s.version ?? '?';
+      tr.children[3].innerHTML = chips.map(([t, c]) => `<span class="chip ${c}">${t}</span>`).join('');
+      fwSlotsBody.appendChild(tr);
+    });
+  }
+
+  function parseVersion(s) {
+    const parts = String(s).split(/[.+]/).map(Number);
+    while (parts.length < 4) parts.push(0);
+    return parts;
+  }
+
+  function compareVersions(a, b) {
+    for (let i = 0; i < 4; i++) {
+      if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
+    }
+    return 0;
+  }
+
+  // How the selected file relates to what's on the board.
+  function compareImage() {
+    if (!fwImage) return null;
+    const s0 = slotOf(0);
+    const s1 = slotOf(1);
+    if (!s0) return { kind: 'unknown', text: 'board state not read yet' };
+    if (bytesEqual(fwImage.hash, s0.hash)) return { kind: 'same', text: 'identical to the running image' };
+    if (s1 && bytesEqual(fwImage.hash, s1.hash)) return { kind: 'inSlot1', text: 'already uploaded to slot 1' };
+    const c = compareVersions(fwImage.verParts, parseVersion(s0.version));
+    if (c > 0) return { kind: 'newer', text: `newer than running ${s0.version}` };
+    if (c < 0) return { kind: 'older', text: `older than running ${s0.version} (downgrade)` };
+    return { kind: 'sameVersion', text: `same version as running ${s0.version}, different build` };
+  }
+
+  function renderFileInfo() {
+    const set = (key, text) => {
+      const cell = fwInfoCells.get(key);
+      cell.classList.toggle('stale', !fwImage);
+      cell.querySelector('.v').textContent = text;
+    };
+    if (!fwImage) {
+      ['name', 'version', 'size', 'hash', 'compare'].forEach((k) => set(k, '—'));
+      return;
+    }
+    set('name', fwImage.name);
+    set('version', fwImage.version);
+    set('size', `${(fwImage.bytes.length / 1024).toFixed(1)} KB`);
+    set('hash', `${toHex(fwImage.hash).slice(0, 16)}…`);
+    set('compare', compareImage().text);
+  }
+
+  async function refreshState() {
+    const rsp = await smpRequest(SMP_OP_READ, SMP_GRP_IMG, SMP_ID_IMG_STATE);
+    fwSlots = Array.isArray(rsp.images) ? rsp.images : [];
+    renderSlots();
+    renderFileInfo();
+    syncFwControls();
+    return fwSlots;
+  }
+
+  // Data bytes per upload request. "auto" fills the board's SMP buffer
+  // (MCUMGR params buf_size), leaving room for the header and CBOR keys.
+  async function uploadChunkSize() {
+    if (fwChunk.value !== 'auto') return Number(fwChunk.value);
+    try {
+      const rsp = await smpRequest(SMP_OP_READ, SMP_GRP_OS, SMP_ID_OS_PARAMS);
+      if (rsp.buf_size > 256) return Math.floor((rsp.buf_size - 128) / 4) * 4;
+    } catch (e) {
+      log('SYS', `SMP: params unavailable (${e.message}), using 512-byte chunks`);
+    }
+    return 512;
+  }
+
+  // The board answers each chunk with the offset it wants next; sending
+  // off=0 with the same sha resumes an interrupted upload of this image.
+  async function uploadImage() {
+    const data = fwImage.bytes;
+    const chunk = await uploadChunkSize();
+    log('SMP', `upload ${fwImage.version}, ${data.length} bytes, ${chunk}-byte chunks`);
+    let off = 0;
+    let base = null;
+    let t0 = 0;
+    let timeouts = 0;
+    setProgress(0, data.length);
+    while (off < data.length) {
+      if (fwCancel) throw new Error('upload cancelled (the partial image stays in slot 1 until overwritten)');
+      const n = Math.min(chunk, data.length - off);
+      const req = off === 0
+        ? { image: 0, len: data.length, off: 0, sha: fwImage.sha256, data: data.subarray(0, n) }
+        : { off, data: data.subarray(off, off + n) };
+      let rsp;
+      try {
+        // The first chunk can take a while: the board prepares slot 1.
+        rsp = await smpRequest(SMP_OP_WRITE, SMP_GRP_IMG, SMP_ID_IMG_UPLOAD, req, off === 0 ? 30000 : 5000);
+        timeouts = 0;
+      } catch (e) {
+        if (e instanceof SmpError || !smpChar || ++timeouts > 3) throw e;
+        log('SYS', `SMP: chunk at ${off} got no reply, retrying`);
+        continue;
+      }
+      if (typeof rsp.off !== 'number') throw new Error('upload reply carried no offset');
+      if (base === null) {
+        // Rate is measured from the first reply, which also covers resumes.
+        base = rsp.off;
+        t0 = performance.now();
+        if (rsp.off > n) log('SMP', `resuming an earlier upload at ${rsp.off}`);
+      }
+      off = rsp.off;
+      setProgress(off, data.length, base, t0);
+    }
+    log('SMP', 'upload complete');
+  }
+
+  function waitForDisconnect(ms) {
+    return withTimeout((async () => {
+      while (device?.gatt?.connected) await sleep(100);
+    })(), ms, 'board did not reset');
+  }
+
+  // A reply may never come back: the board resets 250 ms after accepting
+  // (CONFIG_MCUMGR_GRP_OS_RESET_MS), so only an explicit refusal is an error.
+  async function resetBoard() {
+    log('SMP', 'reset');
+    try {
+      await smpRequest(SMP_OP_WRITE, SMP_GRP_OS, SMP_ID_OS_RESET, {});
+    } catch (e) {
+      if (e instanceof SmpError) throw e;
+    }
+    await waitForDisconnect(10000);
+  }
+
+  // Reconnects to the same device without the picker. MCUboot's swap of a
+  // ~300 KB image takes a few seconds before the app advertises again.
+  async function reconnect(ms) {
+    const end = Date.now() + ms;
+    await sleep(2000);
+    while (Date.now() < end) {
+      try {
+        await withTimeout(openGatt(), 15000, 'connect timed out');
+        return true;
+      } catch (e) {
+        try { device.gatt.disconnect(); } catch (_) { /* not connected */ }
+        setState('disconnected', 'waiting for the board to come back…');
+        await sleep(2000);
+      }
+    }
+    return false;
+  }
+
+  // Waits for the image with `hash` to be running in slot 0 and confirmed.
+  async function verifyRunning(hash) {
+    const end = Date.now() + 30000;
+    for (;;) {
+      await refreshState();
+      const s0 = slotOf(0);
+      if (!s0 || !bytesEqual(s0.hash, hash)) {
+        throw new Error(`board runs ${s0 ? s0.version : '?'}, not the expected image: MCUboot rejected or reverted it`);
+      }
+      if (s0.confirmed) return;
+      if (Date.now() > end) {
+        throw new Error('new image runs but is still unconfirmed after 30 s: the next reset reverts it');
+      }
+      fwMsg('', `running ${s0.version}, waiting for the firmware to confirm it…`);
+      await sleep(2000);
+    }
+  }
+
+  async function fwRun(fn) {
+    if (fwBusy) return;
+    fwBusy = true;
+    fwCancel = false;
+    fwMsg('', '');
+    syncFwControls();
+    try {
+      await fn();
+    } catch (e) {
+      if (fwStep) step(fwStep, 'fail');
+      fwMsg('error', e.message || String(e));
+      log('SYS', `SMP: ${e.message || e}`);
+    } finally {
+      fwBusy = false;
+      fwStep = null;
+      syncFwControls();
+    }
+  }
+
+  // Refuses images that would be skipped or are clearly a mistake.
+  function checkImageForUpload() {
+    const cmp = compareImage();
+    if (cmp.kind === 'same') throw new Error('this image is already running: bump VERSION and rebuild');
+    if (cmp.kind === 'older' && !window.confirm(`The file (${fwImage.version}) is ${cmp.text}. Upload it anyway?`)) {
+      throw new Error('cancelled');
+    }
+    return cmp;
+  }
+
+  function runUpdate() {
+    return fwRun(async () => {
+      resetSteps();
+      setProgress(0, 0);
+      step('check', 'active');
+      await refreshState();
+      const cmp = checkImageForUpload();
+      step('check', 'done', cmp.text);
+
+      if (cmp.kind === 'inSlot1') {
+        step('upload', 'skip', 'already in slot 1');
+      } else {
+        step('upload', 'active');
+        await uploadImage();
+        step('upload', 'done');
+      }
+
+      step('test', 'active');
+      await smpRequest(SMP_OP_WRITE, SMP_GRP_IMG, SMP_ID_IMG_STATE, { hash: fwImage.hash, confirm: false });
+      await refreshState();
+      step('test', 'done');
+
+      step('reset', 'active');
+      await resetBoard();
+      step('reset', 'done');
+
+      step('reconnect', 'active');
+      if (!await reconnect(90000)) throw new Error('board did not come back within 90 s');
+      step('reconnect', 'done');
+
+      step('verify', 'active');
+      await verifyRunning(fwImage.hash);
+      step('verify', 'done', `${fwImage.version} active + confirmed`);
+      fwMsg('ok', `Updated to ${fwImage.version}; the firmware confirmed it.`);
+    });
+  }
+
+  el('fwFile').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    fwMsg('', '');
+    try {
+      let bytes = new Uint8Array(await file.arrayBuffer());
+      let name = file.name;
+      if (bytes.length >= 4 && new DataView(bytes.buffer).getUint32(0, true) === 0x04034b50) {
+        const inner = await extractBinFromZip(bytes);
+        bytes = inner.bytes;
+        name = `${file.name} › ${inner.name}`;
+      }
+      const info = parseMcubootImage(bytes);
+      const sha256 = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+      fwImage = { name, bytes, sha256, ...info };
+    } catch (err) {
+      fwImage = null;
+      fwMsg('error', err.message || String(err));
+    }
+    renderFileInfo();
+    syncFwControls();
+  });
+
+  fwUpdateBtn.addEventListener('click', runUpdate);
+  fwCancelBtn.addEventListener('click', () => { fwCancel = true; });
+
+  // Switch back (or forward): test-boot whatever slot 1 holds - after an
+  // update, the image it replaced - then wait for that firmware's own
+  // dfu_process() to confirm it, exactly like the tail of an update.
+  fwSwitchBtn.addEventListener('click', () => fwRun(async () => {
+    await refreshState();
+    const s0 = slotOf(0);
+    const s1 = slotOf(1);
+    if (!s1) throw new Error('slot 1 is empty: nothing to switch to');
+    const ok = window.confirm(
+      `Switch the board from ${s0 ? s0.version : '?'} to ${s1.version}?\n\n` +
+      'The board resets; the image in slot 1 boots as a test and becomes permanent once it confirms itself.'
+    );
+    if (!ok) return;
+    log('SMP', `switch ${s0 ? s0.version : '?'} -> ${s1.version}`);
+    await smpRequest(SMP_OP_WRITE, SMP_GRP_IMG, SMP_ID_IMG_STATE, { hash: s1.hash, confirm: false });
+    fwMsg('', `resetting into ${s1.version}…`);
+    await resetBoard();
+    if (!await reconnect(90000)) throw new Error('board did not come back within 90 s');
+    await verifyRunning(s1.hash);
+    fwMsg('ok', `Switched to ${s1.version}; the firmware confirmed it. Slot 1 now holds ${s0 ? s0.version : 'the previous image'}.`);
+  }));
+
+  el('fwReadBtn').addEventListener('click', () => fwRun(async () => {
+    await refreshState();
+  }));
+
+  fwUploadBtn.addEventListener('click', () => fwRun(async () => {
+    resetSteps();
+    await refreshState();
+    if (checkImageForUpload().kind === 'inSlot1') {
+      fwMsg('ok', 'Already in slot 1, nothing to upload.');
+      return;
+    }
+    await uploadImage();
+    await refreshState();
+    fwMsg('ok', 'Uploaded to slot 1. Mark it for test and reset to boot it.');
+  }));
+
+  el('fwTestBtn').addEventListener('click', () => fwRun(async () => {
+    await refreshState();
+    const s1 = slotOf(1);
+    if (!s1) throw new Error('slot 1 is empty: upload an image first');
+    await smpRequest(SMP_OP_WRITE, SMP_GRP_IMG, SMP_ID_IMG_STATE, { hash: s1.hash, confirm: false });
+    await refreshState();
+    fwMsg('ok', `Slot 1 (${s1.version}) will be test-booted on the next reset.`);
+  }));
+
+  el('fwConfirmBtn').addEventListener('click', () => fwRun(async () => {
+    const ok = window.confirm(
+      'Mark the running image (slot 0) as permanent?\n\n' +
+      'The firmware normally does this by itself ~5 s after a test boot; confirming by hand ' +
+      'skips that check.'
+    );
+    if (!ok) return;
+    await smpRequest(SMP_OP_WRITE, SMP_GRP_IMG, SMP_ID_IMG_STATE, { confirm: true });
+    await refreshState();
+    fwMsg('ok', 'Running image confirmed.');
+  }));
+
+  el('fwResetBtn').addEventListener('click', () => fwRun(async () => {
+    if (!window.confirm('Reset the board? It reconnects automatically afterwards.')) return;
+    await resetBoard();
+    if (!await reconnect(90000)) throw new Error('board did not come back within 90 s');
+    fwMsg('ok', 'Board reset and reconnected.');
+  }));
+
+  renderSlots();
+  renderFileInfo();
+
+  if (!navigator.bluetooth) {
+    connectBtn.disabled = true;
+    connectPanel.classList.add('unsupported');
+    statusName.textContent = 'Web Bluetooth unavailable';
+    statusDetail.textContent = 'this browser/context does not expose navigator.bluetooth';
+    supportNote.textContent = 'Requires Chrome or Edge, served over http://localhost or https:// (opening this file directly as file:// will not work). Not supported in Safari/iOS.';
+  } else {
+    supportNote.textContent = 'Click Connect, then pick “DTS-CS01_xxxxxx” (xxxxxx = last 6 hex digits of the board’s BLE address) from the browser’s device list.';
+  }
+
+  setState('disconnected');
+})();
+</script>
+
+</body>
+</html>
